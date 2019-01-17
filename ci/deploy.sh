@@ -4,6 +4,7 @@ set -e
 
 # Update dependencies and docker image end push them taking care to separate by repositories and branches.
 echo 'deploy script'
+helm repo add blackfire https://tech.sparkfabrik.com/blackfire-chart/
 helm dependencies update ./api/helm/api
 
 # You can customize it to fit your needs, for example for branch naming e.g. PHP_REPOSITORY="eu.gcr.io/${PROJECT_ID}/php-${BRANCH}"
@@ -21,7 +22,7 @@ export NAMESPACE=demo-${BRANCH};
 export RELEASE=${NAMESPACE};
 
 # Build and push the docker images.
-docker build --pull -t ${PHP_REPOSITORY} -t ${PHP_REPOSITORY}:latest api --target api_platform_php;
+docker build --build-arg INSTALL_BLACKFIRE=${BLACKFIRE_ENABLED} --pull -t ${PHP_REPOSITORY} -t ${PHP_REPOSITORY}:latest api --target api_platform_php;
 docker build --pull -t ${NGINX_REPOSITORY} -t ${NGINX_REPOSITORY}:latest api --target api_platform_nginx;
 docker build --pull -t ${VARNISH_REPOSITORY} -t ${VARNISH_REPOSITORY}:latest api --target api_platform_varnish;
 gcloud docker -- push ${PHP_REPOSITORY}:latest;
@@ -36,6 +37,9 @@ helm upgrade --install --reset-values --wait --force --namespace=${NAMESPACE} --
     --set nginx.repository=${NGINX_REPOSITORY} \
     --set varnish.repository=${VARNISH_REPOSITORY} \
     --set secret=${APP_SECRET} \
+    --set blackfire.blackfire.server_id=${BLACKFIRE_SERVER_ID} \
+    --set blackfire.blackfire.server_token=${BLACKFIRE_SERVER_TOKEN} \
+    --set blackfire.blackfire.enabled=${BLACKFIRE_ENABLED} \
     --set php.mercure.jwt=${MERCURE_JWT} \
     --set mercure.jwtKey=${MERCURE_JWT_KEY} \
     --set postgresUser=${DATABASE_USER},postgresPassword="${DATABASE_PASSWORD}",postgresDatabase=${DATABASE_NAME} --set postgresql.persistence.enabled=true;
